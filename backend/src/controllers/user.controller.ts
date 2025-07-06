@@ -68,7 +68,7 @@ export default class UserController {
   static getUserById: RequestHandler<{id: string}, ResponseType<UserResponseType>, any> = async (req, res) => {
     try {
       const { id } = req.params;
-      const user = await User.findById(id, '_id email');
+      const user = await User.findById(id, '_id email').populate('files');
       if (!user) {
         res.status(404).json({ status: 404, message: 'Usuário não encontrado' });
         return;
@@ -78,6 +78,7 @@ export default class UserController {
         email: user.email,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        files: user.files,
       } });
     } catch (error) {
       res

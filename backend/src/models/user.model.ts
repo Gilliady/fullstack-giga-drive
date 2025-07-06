@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { IFile } from './file.model';
 
 export interface IUser extends Document {
   email: string;
@@ -6,6 +7,7 @@ export interface IUser extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
+  files?: IFile[];
 }
 
 const UserSchema: Schema = new Schema({
@@ -21,7 +23,16 @@ const UserSchema: Schema = new Schema({
     required: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Campo virtual para arquivos
+UserSchema.virtual('files', {
+  ref: 'File',
+  localField: '_id',
+  foreignField: 'userId'
 });
 
 UserSchema.pre('save', async function(next) {
