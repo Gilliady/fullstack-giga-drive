@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
   res.send("<h1>Bem-vindo à API do Giga Drive!</h1>");
 });
 
-app.use('/', routes);
+app.use('/api/v1', routes);
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);

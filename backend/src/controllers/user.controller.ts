@@ -127,7 +127,7 @@ export default class UserController {
           .json({ status: 400, message: 'Senha atual fornecida está incorreta.' });
         return;
       }
-      user.__v += 1;
+      user.__v! += 1;
       await user.save();
 
       const userResponse: UserResponseType = {
