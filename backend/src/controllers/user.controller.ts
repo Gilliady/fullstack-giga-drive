@@ -4,43 +4,39 @@ import * as bcrypt from 'bcryptjs';
 import { UserResponseType, UserUpdateType } from '../types/user.types';
 import { ObjectId } from 'mongoose';
 import { ResponseType } from '../types/response.type';
+import { GCSService } from '../services/gcs.service';
 
 export default class UserController {
-  static createUser: RequestHandler<
-    {},
-    ResponseType<UserResponseType>,
-    IUser
-  > = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      const newUser = new User({
-        email: email.toLowerCase(),
-        password: bcrypt.hashSync(password, 10),
-      });
-      await newUser.save();
-      const userResponse: UserResponseType = {
-        id: newUser._id as ObjectId,
-        email: newUser.email,
-        createdAt: newUser.createdAt,
-        updatedAt: newUser.updatedAt,
-      };
-      res
-        .status(201)
-        .json({
+  private static gcsService: GCSService = new GCSService('drive-no-drive');
+
+  static createUser: RequestHandler<{}, ResponseType<UserResponseType>, IUser> =
+    async (req, res) => {
+      try {
+        const { email, password } = req.body;
+        const newUser = new User({
+          email: email.toLowerCase(),
+          password: bcrypt.hashSync(password, 10),
+        });
+        await newUser.save();
+        const userResponse: UserResponseType = {
+          id: newUser._id as ObjectId,
+          email: newUser.email,
+          createdAt: newUser.createdAt,
+          updatedAt: newUser.updatedAt,
+        };
+        res.status(201).json({
           status: 201,
           message: 'Usuário criado com sucesso!',
           data: userResponse,
         });
-    } catch (error) {
-      res
-        .status(400)
-        .json({
+      } catch (error) {
+        res.status(400).json({
           status: 400,
           message: 'Erro ao criar usuário',
           error: error instanceof Error ? error.message : String(error),
         });
-    }
-  };
+      }
+    };
 
   static getUsers: RequestHandler<{}, ResponseType<UserResponseType[]>> =
     async (req, res) => {
@@ -55,46 +51,59 @@ export default class UserController {
         }));
         res.status(200).json({ status: 200, message: 'ok', data: users });
       } catch (error) {
-        res
-          .status(500)
-          .json({
-            status: 500,
-            message: 'Erro ao obter usuários',
-            error: error instanceof Error ? error.message : String(error),
-          });
+        res.status(500).json({
+          status: 500,
+          message: 'Erro ao obter usuários',
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     };
 
-  static getUserById: RequestHandler<{id: string}, ResponseType<UserResponseType>, any> = async (req, res) => {
+  static getUserById: RequestHandler<
+    { id: string },
+    ResponseType<UserResponseType>,
+    any
+  > = async (req, res) => {
     try {
       const { id } = req.params;
-      const user = await User.findById(id, '_id email').populate('files');
+      const user = await User.findById(id, '_id email').populate('folders');
       if (!user) {
-        res.status(404).json({ status: 404, message: 'Usuário não encontrado' });
+        res
+          .status(404)
+          .json({ status: 404, message: 'Usuário não encontrado' });
         return;
       }
-      res.status(200).json({status: 200, message: "ok", data: {
-        id: user._id as ObjectId,
-        email: user.email,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        files: user.files,
-      } });
+
+      res.status(200).json({
+        status: 200,
+        message: 'ok',
+        data: {
+          id: user._id as ObjectId,
+          email: user.email,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          folders: user.folders
+            ? user.folders.map((folder) => ({
+                id: folder._id as ObjectId,
+                name: folder.name,
+              }))
+            : [],
+        },
+      });
     } catch (error) {
-      res
-        .status(500)
-        .json({
-          status: 500,
-          message: 'Erro ao obter usuário',
-          error: error instanceof Error ? error.message : String(error),
-        });
+      res.status(500).json({
+        status: 500,
+        message: 'Erro ao obter usuário',
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 
-  static updateUser: RequestHandler<{id: string}, ResponseType<UserResponseType>, UserUpdateType> = async (
-    req,
-    res
-  ) => {
+  static updateUser: RequestHandler<
+    { id: string },
+    ResponseType<UserResponseType>,
+    UserUpdateType
+  > = async (req, res) => {
     try {
       const { id } = req.params;
       const { email, password, newPassword } = req.body;
@@ -102,7 +111,9 @@ export default class UserController {
       const user = await User.findById(id);
 
       if (!user) {
-        res.status(404).json({ status: 400, message: 'Usuário não encontrado' });
+        res
+          .status(404)
+          .json({ status: 400, message: 'Usuário não encontrado' });
         return;
       }
       if (bcrypt.compareSync(password, user.password)) {
@@ -113,19 +124,20 @@ export default class UserController {
           if (newPassword !== password) {
             user.password = bcrypt.hashSync(newPassword, 10);
           } else {
-            res
-              .status(400)
-              .json({
-                status: 400,
-                message: 'A nova senha não pode ser igual à senha antiga',
-              });
+            res.status(400).json({
+              status: 400,
+              message: 'A nova senha não pode ser igual à senha antiga',
+            });
             return;
           }
         }
       } else {
         res
           .status(400)
-          .json({ status: 400, message: 'Senha atual fornecida está incorreta.' });
+          .json({
+            status: 400,
+            message: 'Senha atual fornecida está incorreta.',
+          });
         return;
       }
       user.__v! += 1;
@@ -138,21 +150,17 @@ export default class UserController {
         updatedAt: user.updatedAt,
       };
 
-      res
-        .status(200)
-        .json({
-          status: 200,
-          message: 'Usuário atualizado com sucesso',
-          data: userResponse,
-        });
+      res.status(200).json({
+        status: 200,
+        message: 'Usuário atualizado com sucesso',
+        data: userResponse,
+      });
     } catch (error) {
-      res
-        .status(500)
-        .json({
-          status: 500,
-          message: 'Erro ao atualizar usuário',
-          error: error instanceof Error ? error.message : String(error),
-        });
+      res.status(500).json({
+        status: 500,
+        message: 'Erro ao atualizar usuário',
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   };
 }

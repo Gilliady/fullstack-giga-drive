@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IFile } from './file.model';
+import { IFolder } from './folder.model';
 
 export interface IUser extends Document {
   email: string;
@@ -7,41 +8,45 @@ export interface IUser extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
-  files?: IFile[];
+  folders?: IFolder[];
 }
 
-const UserSchema: Schema = new Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
+const UserSchema: Schema = new Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
   },
-  password: {
-    type: String,
-    required: true
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
+);
 
-// Campo virtual para arquivos
-UserSchema.virtual('files', {
-  ref: 'File',
+UserSchema.virtual('folders', {
+  ref: 'Folder',
   localField: '_id',
-  foreignField: 'userId'
+  foreignField: 'userId',
 });
 
-UserSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function (next) {
   if (!this.isModified('email')) {
     return next();
   }
 
   try {
-    const userExists = await mongoose.model('User').findOne({ email: this.email });
+    const userExists = await mongoose
+      .model('User')
+      .findOne({ email: this.email });
     if (userExists) {
       throw new Error('Email já está em uso');
     }

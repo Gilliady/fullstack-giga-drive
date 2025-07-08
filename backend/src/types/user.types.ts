@@ -6,7 +6,10 @@ export type UserResponseType = {
   email: string,
   createdAt?: Date,
   updatedAt?: Date,
-  files?: IFile[]
+  folders?: {
+    id: ObjectId,
+    name: string
+  }[],
 }
 
 export type UserUpdateType = {

@@ -6,7 +6,11 @@ const route: Router = Router();
 
 route.post(
   '/',
-  (req: Request<{}, any, UserCreateType>, res: Response<ResponseType<UserResponseType>>, next: NextFunction) => {
+  (
+    req: Request<{}, any, UserCreateType>,
+    res: Response<ResponseType<UserResponseType>>,
+    next: NextFunction
+  ) => {
     const { email, password } = req.body;
     if (!email || !password) {
       res.status(400).json({
@@ -17,7 +21,8 @@ route.post(
     }
     next();
   },
-  UserController.createUser);
+  UserController.createUser
+);
 
 route.get('/', UserController.getUsers);
 
@@ -30,7 +35,10 @@ route.put(
     if (!email && !newPassword) {
       res
         .status(400)
-        .json({ status: 400, message: 'Forneça ao menos um dado que deseja atualizar' });
+        .json({
+          status: 400,
+          message: 'Forneça ao menos um dado que deseja atualizar',
+        });
       return;
     }
 
